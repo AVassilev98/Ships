@@ -4,3 +4,8 @@ main: me.antonvassilev.ships.Ships
 api-version: 1.18
 authors: [ AVassilev98 ]
 description: A plugin for ships in minecraft
+commands:
+  info:
+    description: Gives info about the Ships plugin
+    usage: /info
+
