@@ -48,7 +48,10 @@ public class SignWriteEventHandler implements Listener {
                 return ((TextComponent) component).content();
             return null;
         });
-        name.ifPresent(s -> vessels.put(name.get(), new Vessel(owningPlugin, name.get(), eventBlock)));
+        name.ifPresent(s -> {
+            vessels.put(s, new Vessel(owningPlugin, s, eventBlock));
+            owningPlugin.getLogger().info("Created new vessel: " + s);
+        });
     }
 
     private void handleEngineSign(Block eventBlock, List<Component> signComponents)
@@ -58,8 +61,8 @@ public class SignWriteEventHandler implements Listener {
         Optional<String> name = ShipUtils.getMetadataStringFromBlock(
                 Vessel.VESSEL_NAME_METADATA_KEY, eventBlock.getRelative(BlockFace.DOWN), owningPlugin);
         name.ifPresent(s -> {
-            Vessel vessel = vessels.get(name.get());
-            owningPlugin.getLogger().info("Adding engine sign to vessel: " + name.get());
+            Vessel vessel = vessels.get(s);
+            owningPlugin.getLogger().info("Adding engine sign to vessel: " + s);
             vessel.addEngineSign(eventBlock);
         });
     }
