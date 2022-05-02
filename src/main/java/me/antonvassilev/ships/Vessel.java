@@ -104,48 +104,34 @@ public class Vessel {
     // Movement
     //
 
-    public void moveForward()
-    {
-        m_blocks.sort(
-            new Comparator<Block>() {
-                @Override
-                public int compare(Block o1, Block o2) {
-                    if (o1.getX() < o2.getX())
-                    {
-                        return 1;
-                    }
-                    else if (o1.getX() > o2.getX())
-                    {
-                        return -1;
-                    }
-                    return 0;
-                }
-            }
-        );
-        for (Block block : m_blocks)
-        {
+    public void moveForward() {
+        // TODO: Forward is not always +x direction.
+        m_blocks.sort(Comparator.comparing(Block::getX));
+        moveBlocks(1, 0, 0);
+    }
+    public void moveUp() {
+        m_blocks.sort(Comparator.comparing(Block::getY).reversed());
+        moveBlocks(0, 1, 0);
+    }
+    public void moveDown() {
+        m_blocks.sort(Comparator.comparing(Block::getY));
+        moveBlocks(0, -1, 0);
+    }
+
+    public void rotateRight() {
+        // TODO: Implement
+    }
+    public void rotateLeft() {
+        // TODO: Implement
+    }
+
+    private void moveBlocks(int x, int y, int z) {
+        for (Block block : m_blocks) {
             Location blockLoc = block.getLocation();
-            Location newLoc = blockLoc.add(1, 0, 0);
+            Location newLoc = blockLoc.add(x, y, z);
             newLoc.getBlock().setBlockData(block.getBlockData());
             block.setType(Material.AIR);
         }
-    }
-
-    public void rotateRight()
-    {
-        // TODO: Implement
-    }
-    public void rotateLeft()
-    {
-        // TODO: Implement
-    }
-    public void moveUp()
-    {
-        // TODO: Implement
-    }
-    public void moveDown()
-    {
-        // TODO: Implement
     }
 
     //
