@@ -24,7 +24,8 @@ public class SignClickEventHandler implements Listener {
             // Make sure the block we clicked is a vessel engine.
             Optional<String> controlType = ShipUtils.getMetadataStringFromBlock(
                     Vessel.VESSEL_CONTROL_TYPE_METADATA_KEY, event.getClickedBlock(), owningPlugin);
-            if(!controlType.isPresent() || !controlType.get().equals("ENGINE")) {
+            if(!controlType.isPresent() ||
+                    !controlType.get().equals(Vessel.EngineSign.METADATA_KEY)) {
                 return;
             }
             // Find the vessel by the name extracted from engine sign metadata and

@@ -40,14 +40,18 @@ public class Vessel {
         startBlock.setMetadata(VESSEL_NAME_METADATA_KEY,
                 new FixedMetadataValue(owningPlugin, name));
         startBlock.setMetadata(VESSEL_CONTROL_TYPE_METADATA_KEY,
-                new FixedMetadataValue(owningPlugin, "LICENSE"));
+                new FixedMetadataValue(owningPlugin, LicenseSign.METADATA_KEY));
         this.licenseSign = new LicenseSign(startBlock);
         discoverVesselFromBlock(startBlock);
     }
 
+    /**
+     * Sets the metadata on an engine sign block and adds it to the vessel.
+     * @param eventBlock Block
+     */
     public void addEngineSign(Block eventBlock) {
         eventBlock.setMetadata(VESSEL_CONTROL_TYPE_METADATA_KEY,
-                new FixedMetadataValue(owningPlugin, "ENGINE"));
+                new FixedMetadataValue(owningPlugin, EngineSign.METADATA_KEY));
         eventBlock.setMetadata(VESSEL_NAME_METADATA_KEY,
                 new FixedMetadataValue(owningPlugin, name));
         this.engineSign = new EngineSign(eventBlock);
@@ -144,10 +148,6 @@ public class Vessel {
         // TODO: Implement
     }
 
-    public String getName() {
-        return name;
-    }
-
     //
     // Containers for the different types of signs
     //
@@ -159,12 +159,14 @@ public class Vessel {
     }
 
     static class EngineSign extends ShipSign {
+        public static final String METADATA_KEY = "ENGINE";
         public EngineSign(Block block) {
             super(block);
         }
     }
 
     static class LicenseSign extends ShipSign {
+        public static final String METADATA_KEY = "LICENSE";
         public LicenseSign(Block block) {
             super(block);
         }

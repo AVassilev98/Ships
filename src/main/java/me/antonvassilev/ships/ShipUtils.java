@@ -12,9 +12,10 @@ public class ShipUtils {
     /**
      * Extracts a String metadata value from a (block, plugin) tuple. Assumes that the value object
      * is of String type.
-     * @param block
-     * @param owningPlugin
-     * @return
+     * @param key String metadata key
+     * @param block Block block
+     * @param owningPlugin Plugin the plugin that we are fetching metadata for
+     * @return Optional containing the value, if found.
      */
     public static Optional<String> getMetadataStringFromBlock(String key, Block block, Plugin owningPlugin) {
         List<MetadataValue> metadataValues =
@@ -23,7 +24,6 @@ public class ShipUtils {
                 .stream()
                 .filter(metadataValue -> metadataValue.getOwningPlugin().equals(owningPlugin))
                 .findFirst();
-        return Optional.ofNullable(
-                obj.map(metadataValue -> (String) metadataValue.value()).orElse(null));
+        return obj.map(metadataValue -> (String) metadataValue.value());
     }
 }
