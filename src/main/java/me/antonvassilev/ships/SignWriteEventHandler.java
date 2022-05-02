@@ -48,11 +48,7 @@ public class SignWriteEventHandler implements Listener {
                 return ((TextComponent) component).content();
             return null;
         });
-
-        if (!name.isPresent()) {
-            owningPlugin.getLogger().info("Missing ship name!");
-        }
-        vessels.put(name.get(), new Vessel(owningPlugin, name.get(), eventBlock));
+        name.ifPresent(s -> vessels.put(name.get(), new Vessel(owningPlugin, name.get(), eventBlock)));
     }
 
     private void handleEngineSign(Block eventBlock, List<Component> signComponents)
