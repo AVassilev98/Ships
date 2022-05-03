@@ -12,6 +12,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class Vessel {
     final private static int MAX_VESSEL_SZ = 5000;
@@ -27,9 +28,9 @@ public class Vessel {
     private final ArrayList<Block> m_blocks = new ArrayList<>();
     private final LicenseSign licenseSign;
     private EngineSign engineSign;
+    private final HashMap<Block, SteeringSign> steeringSigns = new HashMap<>();
 
-    Vessel(Plugin owningPlugin, String name, Block startBlock)
-    {
+    Vessel(Plugin owningPlugin, String name, Block startBlock) {
         this.name = name;
         this.owningPlugin = owningPlugin;
 
@@ -40,25 +41,33 @@ public class Vessel {
         startBlock.setMetadata(VESSEL_NAME_METADATA_KEY,
                 new FixedMetadataValue(owningPlugin, name));
         startBlock.setMetadata(VESSEL_CONTROL_TYPE_METADATA_KEY,
-                new FixedMetadataValue(owningPlugin, LicenseSign.METADATA_KEY));
+                new FixedMetadataValue(owningPlugin, LicenseSign.METADATA_VALUE));
         this.licenseSign = new LicenseSign(startBlock);
         discoverVesselFromBlock(startBlock);
     }
 
     /**
      * Sets the metadata on an engine sign block and adds it to the vessel.
-     * @param eventBlock Block
+     * @param block Block
      */
-    public void addEngineSign(Block eventBlock) {
-        eventBlock.setMetadata(VESSEL_CONTROL_TYPE_METADATA_KEY,
-                new FixedMetadataValue(owningPlugin, EngineSign.METADATA_KEY));
-        eventBlock.setMetadata(VESSEL_NAME_METADATA_KEY,
+    public void addEngineSign(Block block) {
+        if(this.engineSign != null) {
+            owningPlugin.getLogger().info("Engine already registered for ship.");
+            return;
+        }
+        block.setMetadata(VESSEL_CONTROL_TYPE_METADATA_KEY,
+                new FixedMetadataValue(owningPlugin, EngineSign.METADATA_VALUE));
+        block.setMetadata(VESSEL_NAME_METADATA_KEY,
                 new FixedMetadataValue(owningPlugin, name));
-        this.engineSign = new EngineSign(eventBlock);
+        this.engineSign = new EngineSign(block);
     }
 
-    private void discoverVesselFromBlock(Block start_block)
-    {
+    public void addSteeringSign(Block block, String direction) {
+        SteeringSign steeringSign = new SteeringSign(block, direction);
+        this.steeringSigns.put(block, steeringSign);
+    }
+
+    private void discoverVesselFromBlock(Block start_block) {
         HashSet<Block> visitedBlocks = new HashSet<>();
         ArrayDeque<Block> workList = new ArrayDeque<>(MAX_SEARCH_SPACE);
         workList.add(start_block);
@@ -118,10 +127,24 @@ public class Vessel {
         moveBlocks(0, -1, 0);
     }
 
-    public void rotateRight() {
+    public void turn(Block block) {
+        SteeringSign sign = this.steeringSigns.get(block);
+        if(sign != null) {
+            switch (sign.getDirection()) {
+                case LEFT:
+                    rotateLeft();
+                    break;
+                case RIGHT:
+                    rotateRight();
+                    break;
+            }
+        }
+    }
+
+    private void rotateRight() {
         // TODO: Implement
     }
-    public void rotateLeft() {
+    private void rotateLeft() {
         // TODO: Implement
     }
 
@@ -145,16 +168,86 @@ public class Vessel {
     }
 
     static class EngineSign extends ShipSign {
-        public static final String METADATA_KEY = "ENGINE";
+        public static final String METADATA_VALUE = "ENGINE";
         public EngineSign(Block block) {
             super(block);
         }
     }
 
     static class LicenseSign extends ShipSign {
-        public static final String METADATA_KEY = "LICENSE";
+        public static final String METADATA_VALUE = "LICENSE";
         public LicenseSign(Block block) {
             super(block);
+        }
+    }
+
+    static class SteeringSign extends ShipSign {
+        public static final String METADATA_VALUE = "STEERING";
+        private final Direction direction;
+        public SteeringSign(Block block, String directionStr) {
+            super(block);
+            this.direction = strToDirection(directionStr);
+        }
+
+        public Direction getDirection() {
+            return direction;
+        }
+
+        public static Direction strToDirection(String val) {
+            if(val.equals("<")) return Direction.LEFT;
+            if(val.equals(">")) return Direction.RIGHT;
+            throw new IllegalArgumentException("Unsupported steering direction");
+        }
+
+        enum Direction {
+            LEFT,
+            RIGHT
+        }
+    }
+
+    /**
+     * Enum class that supports string initialization, and allows fetching enum
+     * by string value.
+     */
+    enum ShipSignType
+    {
+        LICENSE("[name]"),
+        STEERING("[steer]"),
+        ENGINE("[move]"),
+        UNKNOWN("unknown");
+
+        private static final Map<String, ShipSignType> strToShipSignTypeFromStringMap =
+                Arrays.stream(ShipSignType.values()).collect(Collectors.toMap(
+                        ShipSignType::getValue,
+                        ShipSignType::getShipSignType
+                ));
+
+        private static final Map<ShipSignType, String> shipSignTypeToStringMap =
+                Arrays.stream(ShipSignType.values()).collect(Collectors.toMap(
+                        ShipSignType::getShipSignType,
+                        ShipSignType::getValue
+                ));
+
+        private final ShipSignType shipSignType;
+        private final String value;
+
+        ShipSignType(String str) {
+            this.shipSignType = this;
+            this.value = str;
+        }
+
+        public ShipSignType getShipSignType() { return shipSignType; }
+
+        public String getValue() { return value; }
+
+        public static ShipSignType shipSignTypeFromStringFromString(String str) {
+            ShipSignType type = strToShipSignTypeFromStringMap.get(str);
+            if (type != null) return type;
+            return UNKNOWN;
+        }
+
+        public static Optional<String> shipSignTypeToString(ShipSignType signType) {
+            return Optional.ofNullable(shipSignTypeToStringMap.get(signType));
         }
     }
 }
