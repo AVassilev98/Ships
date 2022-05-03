@@ -1,8 +1,10 @@
 package me.antonvassilev.ships;
 
 import net.kyori.adventure.text.BlockNBTComponent;
+import net.minecraft.core.BlockPos;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.Location;
@@ -12,15 +14,18 @@ import org.bukkit.block.data.Directional;
 import org.bukkit.block.data.Rotatable;
 import org.bukkit.block.data.type.Sign;
 import org.bukkit.block.data.type.WallSign;
+import org.bukkit.craftbukkit.v1_18_R2.block.CraftBlockState;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.Plugin;
 
+import java.lang.reflect.Field;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.*;
 import static java.lang.Math.min;
 import static java.lang.Math.max;
+
 
 public class Vessel {
     final private static int MAX_VESSEL_SZ = 5000;
@@ -32,15 +37,20 @@ public class Vessel {
     public static final String VESSEL_CONTROL_TYPE_METADATA_KEY = "VESSEL_CONTROL_TYPE";
 
     private final Plugin owningPlugin;
+    private final World world;
     private final String name;
-    private final ArrayList<Block> m_blocks = new ArrayList<>();
+    private final ArrayList<CraftBlockState> m_blocks = new ArrayList<>();
     private final LicenseSign licenseSign;
     private EngineSign engineSign;
+    private int xBlockOffset = 0;
+    private int yBlockOffset = 0;
+    private int zBlockOffset = 0;
 
     Vessel(Plugin owningPlugin, String name, Block startBlock)
     {
         this.name = name;
         this.owningPlugin = owningPlugin;
+        this.world = startBlock.getWorld();
 
         // Engine sign isn't necessary to create vessel, can be added after.
         this.engineSign = null;
@@ -51,6 +61,10 @@ public class Vessel {
         startBlock.setMetadata(VESSEL_CONTROL_TYPE_METADATA_KEY,
                 new FixedMetadataValue(owningPlugin, LicenseSign.METADATA_KEY));
         this.licenseSign = new LicenseSign(startBlock.getState());
+        this.xBlockOffset = this.licenseSign.block.getX();
+        this.yBlockOffset = this.licenseSign.block.getY();
+        this.zBlockOffset = this.licenseSign.block.getZ();
+
         discoverVesselFromBlock(startBlock);
     }
 
@@ -64,6 +78,21 @@ public class Vessel {
         eventBlock.setMetadata(VESSEL_NAME_METADATA_KEY,
                 new FixedMetadataValue(owningPlugin, name));
         this.engineSign = new EngineSign(eventBlock.getState());
+    }
+
+    void setStatePosition(CraftBlockState block, int x, int y, int z)
+    {
+        Field positionField = null;
+        try {
+            positionField = CraftBlockState.class.getDeclaredField("position");
+            positionField.setAccessible(true);
+            BlockPos newPosition = new BlockPos(x, y, z);
+            positionField.set(block, newPosition);
+        }
+        catch (Exception e) {
+            Bukkit.getLogger().severe(e.toString());
+            return;
+        }
     }
 
     private void discoverVesselFromBlock(Block start_block)
@@ -87,7 +116,8 @@ public class Vessel {
             curBlock.setMetadata(VESSEL_NAME_METADATA_KEY,
                     new FixedMetadataValue(owningPlugin, name));
 
-            m_blocks.add(curBlock);
+            CraftBlockState block = (CraftBlockState) curBlock.getState();
+            m_blocks.add(block);
             if(m_blocks.size() >= MAX_VESSEL_SZ)
             {
                 return;
@@ -127,38 +157,38 @@ public class Vessel {
             case EAST_NORTH_EAST:
             case EAST_SOUTH_EAST:
             case NORTH_EAST:
-                m_blocks.sort(Comparator.comparing(Block::getX));
+                m_blocks.sort(Comparator.comparing(BlockState::getX));
                 moveBlocks(-engineSign.velocity, 0, 0);
                 break;
             case WEST:
             case WEST_NORTH_WEST:
             case WEST_SOUTH_WEST:
             case SOUTH_WEST:
-                m_blocks.sort(Comparator.comparing(Block::getX).reversed());
+                m_blocks.sort(Comparator.comparing(BlockState::getX).reversed());
                 moveBlocks(engineSign.velocity, 0, 0);
                 break;
             case SOUTH:
             case SOUTH_SOUTH_WEST:
             case SOUTH_SOUTH_EAST:
             case SOUTH_EAST:
-                m_blocks.sort(Comparator.comparing(Block::getZ));
+                m_blocks.sort(Comparator.comparing(BlockState::getZ));
                 moveBlocks(0, 0, -engineSign.velocity);
                 break;
             case NORTH:
             case NORTH_NORTH_EAST:
             case NORTH_NORTH_WEST:
             case NORTH_WEST:
-                m_blocks.sort(Comparator.comparing(Block::getZ).reversed());
+                m_blocks.sort(Comparator.comparing(BlockState::getZ).reversed());
                 moveBlocks(0, 0, engineSign.velocity);
                 break;
         }
     }
     public void moveUp() {
-        m_blocks.sort(Comparator.comparing(Block::getY).reversed());
+        m_blocks.sort(Comparator.comparing(BlockState::getY).reversed());
         moveBlocks(0, 1, 0);
     }
     public void moveDown() {
-        m_blocks.sort(Comparator.comparing(Block::getY));
+        m_blocks.sort(Comparator.comparing(BlockState::getY));
     }
 
     public void rotateRight() {
@@ -169,11 +199,15 @@ public class Vessel {
     }
 
     private void moveBlocks(int x, int y, int z) {
-        for (Block block : m_blocks) {
-            Location blockLoc = block.getLocation();
-            Location newLoc = blockLoc.add(x, y, z);
-            newLoc.getBlock().setBlockData(block.getBlockData());
-            block.setType(Material.AIR);
+        this.xBlockOffset += x;
+        this.yBlockOffset += y;
+        this.zBlockOffset += z;
+
+        Bukkit.getLogger().info("Moving blocks!");
+        for (CraftBlockState block : m_blocks) {
+            block.getLocation().getBlock().setType(Material.AIR);
+            setStatePosition(block, block.getX() + x, block.getY() + y, block.getZ() + z);
+            block.update(true);
         }
     }
 
