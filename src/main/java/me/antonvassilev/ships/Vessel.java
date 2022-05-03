@@ -127,7 +127,29 @@ public class Vessel {
                 new FixedMetadataValue(owningPlugin, EngineSign.METADATA_KEY));
         eventBlock.setMetadata(VESSEL_NAME_METADATA_KEY,
                 new FixedMetadataValue(owningPlugin, name));
-        this.engineSign = new EngineSign(eventBlock.getState());
+        CraftBlockState blockState = (CraftBlockState) eventBlock.getState();
+        this.engineSign = new EngineSign(blockState);
+        this.m_blocks.add(new BlockInfo(blockState));
+    }
+
+    public void moveEngineMetadata(int x, int y, int z)
+    {
+        this.engineSign.block.getBlock().removeMetadata(
+                VESSEL_CONTROL_TYPE_METADATA_KEY, owningPlugin
+        );
+        this.engineSign.block.getBlock().removeMetadata(
+                VESSEL_NAME_METADATA_KEY, owningPlugin
+        );
+
+        int newX = this.engineSign.block.getX() + x;
+        int newY = this.engineSign.block.getY() + y;
+        int newZ = this.engineSign.block.getZ() + z;
+
+        Block newEngineBlock = this.world.getBlockAt(newX, newY, newZ);
+        newEngineBlock.setMetadata(VESSEL_CONTROL_TYPE_METADATA_KEY,
+                new FixedMetadataValue(owningPlugin, EngineSign.METADATA_KEY));
+        newEngineBlock.setMetadata(VESSEL_NAME_METADATA_KEY,
+                new FixedMetadataValue(owningPlugin, name));
     }
 
     void setStatePosition(CraftBlockState block, int x, int y, int z)
@@ -252,6 +274,8 @@ public class Vessel {
         this.xBlockOffset += x;
         this.yBlockOffset += y;
         this.zBlockOffset += z;
+
+        moveEngineMetadata(x, y, z);
 
         Bukkit.getLogger().info("Moving blocks!");
         for (BlockInfo block : m_blocks) {
