@@ -1,10 +1,17 @@
 package me.antonvassilev.ships;
 
+import net.kyori.adventure.text.BlockNBTComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.Location;
+import org.bukkit.block.BlockState;
+import org.bukkit.block.data.BlockData;
+import org.bukkit.block.data.Directional;
+import org.bukkit.block.data.Rotatable;
+import org.bukkit.block.data.type.Sign;
+import org.bukkit.block.data.type.WallSign;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.Plugin;
 
@@ -12,6 +19,8 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.*;
+import static java.lang.Math.min;
+import static java.lang.Math.max;
 
 public class Vessel {
     final private static int MAX_VESSEL_SZ = 5000;
@@ -66,12 +75,8 @@ public class Vessel {
         while (!workList.isEmpty())
         {
             Block curBlock = workList.remove();
-            Material curMat = curBlock.getType();
-            if (curMat == Material.AIR ||
-                curMat == Material.CAVE_AIR ||
-                curMat == Material.VOID_AIR ||
-                curMat == Material.WATER ||
-                curMat == Material.LAVA ||
+            if (curBlock.isLiquid() ||
+                curBlock.isEmpty() ||
                 visitedBlocks.contains(curBlock)
             )
             {
@@ -103,11 +108,50 @@ public class Vessel {
     //
     // Movement
     //
+    public void incrementVelocity()
+    {
+        engineSign.incrementVelocity();
+    }
+
+    public void decrementVelocity()
+    {
+        engineSign.decrementVelocity();
+    }
 
     public void moveForward() {
         // TODO: Forward is not always +x direction.
-        m_blocks.sort(Comparator.comparing(Block::getX));
-        moveBlocks(1, 0, 0);
+
+        switch (engineSign.getMovementDirection())
+        {
+            case EAST:
+            case EAST_NORTH_EAST:
+            case EAST_SOUTH_EAST:
+            case NORTH_EAST:
+                m_blocks.sort(Comparator.comparing(Block::getX));
+                moveBlocks(-engineSign.velocity, 0, 0);
+                break;
+            case WEST:
+            case WEST_NORTH_WEST:
+            case WEST_SOUTH_WEST:
+            case SOUTH_WEST:
+                m_blocks.sort(Comparator.comparing(Block::getX).reversed());
+                moveBlocks(engineSign.velocity, 0, 0);
+                break;
+            case SOUTH:
+            case SOUTH_SOUTH_WEST:
+            case SOUTH_SOUTH_EAST:
+            case SOUTH_EAST:
+                m_blocks.sort(Comparator.comparing(Block::getZ));
+                moveBlocks(0, 0, -engineSign.velocity);
+                break;
+            case NORTH:
+            case NORTH_NORTH_EAST:
+            case NORTH_NORTH_WEST:
+            case NORTH_WEST:
+                m_blocks.sort(Comparator.comparing(Block::getZ).reversed());
+                moveBlocks(0, 0, engineSign.velocity);
+                break;
+        }
     }
     public void moveUp() {
         m_blocks.sort(Comparator.comparing(Block::getY).reversed());
@@ -115,7 +159,6 @@ public class Vessel {
     }
     public void moveDown() {
         m_blocks.sort(Comparator.comparing(Block::getY));
-        moveBlocks(0, -1, 0);
     }
 
     public void rotateRight() {
@@ -126,6 +169,7 @@ public class Vessel {
     }
 
     private void moveBlocks(int x, int y, int z) {
+
         for (Block block : m_blocks) {
             Location blockLoc = block.getLocation();
             Location newLoc = blockLoc.add(x, y, z);
@@ -138,16 +182,35 @@ public class Vessel {
     // Containers for the different types of signs
     //
     static class ShipSign {
-        private final Block block;
+        protected final Block block;
         public ShipSign(Block block) {
             this.block = block;
         }
     }
 
     static class EngineSign extends ShipSign {
+        int velocity;
+        private static final int MAX_VELOCITY = 10;
         public static final String METADATA_KEY = "ENGINE";
         public EngineSign(Block block) {
             super(block);
+            this.velocity = 1;
+        }
+        public void incrementVelocity()
+        {
+            this.velocity = min(this.velocity + 1, MAX_VELOCITY);
+        }
+        public void decrementVelocity()
+        {
+            this.velocity = max(this.velocity + 1, 1);
+        }
+        public BlockFace getMovementDirection()
+        {
+            BlockData signData = block.getBlockData();
+            if (signData instanceof Rotatable) {
+                return ((Rotatable) signData).getRotation();
+            }
+            return BlockFace.NORTH;
         }
     }
 

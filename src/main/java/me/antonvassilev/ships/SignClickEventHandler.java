@@ -20,20 +20,49 @@ public class SignClickEventHandler implements Listener {
 
     @EventHandler
     public void onInteract(PlayerInteractEvent event) {
-        if (event.getAction().isRightClick()) {
-            // Make sure the block we clicked is a vessel engine.
-            Optional<String> controlType = ShipUtils.getMetadataStringFromBlock(
-                    Vessel.VESSEL_CONTROL_TYPE_METADATA_KEY, event.getClickedBlock(), owningPlugin);
-            if(!controlType.isPresent() ||
-                    !controlType.get().equals(Vessel.EngineSign.METADATA_KEY)) {
-                return;
+        switch (event.getAction())
+        {
+            case RIGHT_CLICK_BLOCK: {
+                // Make sure the block we clicked is a vessel engine.
+                Optional<String> controlType = ShipUtils.getMetadataStringFromBlock(
+                        Vessel.VESSEL_CONTROL_TYPE_METADATA_KEY, event.getClickedBlock(), owningPlugin);
+                if (!controlType.isPresent() ||
+                        !controlType.get().equals(Vessel.EngineSign.METADATA_KEY)) {
+                    return;
+                }
+                // Find the vessel by the name extracted from engine sign metadata and
+                // move the vessel forward if found.
+                ShipUtils.getMetadataStringFromBlock(Vessel.VESSEL_NAME_METADATA_KEY,
+                                event.getClickedBlock(), owningPlugin)
+                        .map(vessels::get)
+                        .ifPresent(Vessel::moveForward);
+                break;
             }
-            // Find the vessel by the name extracted from engine sign metadata and
-            // move the vessel forward if found.
-            ShipUtils.getMetadataStringFromBlock(Vessel.VESSEL_NAME_METADATA_KEY,
-                    event.getClickedBlock(), owningPlugin)
-                    .map(vessels::get)
-                    .ifPresent(Vessel::moveForward);
+            case LEFT_CLICK_BLOCK: {
+                Optional<String> controlType = ShipUtils.getMetadataStringFromBlock(
+                        Vessel.VESSEL_CONTROL_TYPE_METADATA_KEY, event.getClickedBlock(), owningPlugin);
+                if (!controlType.isPresent() ||
+                        !controlType.get().equals(Vessel.EngineSign.METADATA_KEY)) {
+                    return;
+                }
+
+                Optional<Vessel> owningVessel = ShipUtils.getMetadataStringFromBlock(Vessel.VESSEL_NAME_METADATA_KEY,
+                                event.getClickedBlock(), owningPlugin)
+                        .map(vessels::get);
+                if (!owningVessel.isPresent())
+                {
+                    break;
+                }
+
+                if (event.getPlayer().isSneaking())
+                    owningVessel.get().decrementVelocity();
+                else
+                    owningVessel.get().incrementVelocity();
+
+                break;
+            }
+            default:
+                break;
         }
     }
 }
