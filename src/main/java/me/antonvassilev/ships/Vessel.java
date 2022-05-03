@@ -1,19 +1,17 @@
 package me.antonvassilev.ships;
 
-import net.kyori.adventure.text.BlockNBTComponent;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.TorchBlock;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
-import org.bukkit.Location;
 import org.bukkit.block.BlockState;
-import org.bukkit.block.data.BlockData;
-import org.bukkit.block.data.Directional;
-import org.bukkit.block.data.Rotatable;
+import org.bukkit.block.data.*;
+import org.bukkit.block.data.type.RedstoneWire;
 import org.bukkit.block.data.type.Sign;
-import org.bukkit.block.data.type.WallSign;
+import org.bukkit.block.data.type.Switch;
 import org.bukkit.craftbukkit.v1_18_R2.block.CraftBlockState;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.Plugin;
@@ -28,6 +26,58 @@ import static java.lang.Math.max;
 
 
 public class Vessel {
+
+    private class BlockInfo
+    {
+        private CraftBlockState state;
+        private final int priority;
+        public BlockInfo(CraftBlockState state)
+        {
+            this.state = state;
+            BlockData blockData = state.getBlockData();
+            Material block = state.getType();
+            if (blockData instanceof Sign ||
+                blockData instanceof Switch ||
+                blockData instanceof Rail ||
+                blockData instanceof RedstoneWire ||
+                blockData instanceof Ageable ||
+                block == Material.TORCH ||
+                block == Material.WALL_TORCH ||
+                block == Material.REDSTONE_TORCH ||
+                block == Material.REDSTONE_WALL_TORCH ||
+                block == Material.SOUL_TORCH ||
+                block == Material.SOUL_WALL_TORCH
+            ) {
+                Bukkit.getLogger().info("Found Attachable");
+                this.priority = 1;
+            }
+            else {
+                this.priority = 0;
+            }
+        }
+
+        public int getPriority()
+        {
+            return this.priority;
+        }
+        public CraftBlockState getState()
+        {
+            return this.state;
+        }
+        public int getX()
+        {
+            return this.state.getX();
+        }
+        public int getY()
+        {
+            return this.state.getY();
+        }
+        public int getZ()
+        {
+            return this.state.getZ();
+        }
+    };
+
     final private static int MAX_VESSEL_SZ = 5000;
     // size of workList -> max number of blocks to check for largest case (single column of blocks)
     final private static int MAX_SEARCH_SPACE = (MAX_VESSEL_SZ * 4) + 2;
@@ -39,7 +89,7 @@ public class Vessel {
     private final Plugin owningPlugin;
     private final World world;
     private final String name;
-    private final ArrayList<CraftBlockState> m_blocks = new ArrayList<>();
+    private final ArrayList<BlockInfo> m_blocks = new ArrayList<BlockInfo>();
     private final LicenseSign licenseSign;
     private EngineSign engineSign;
     private int xBlockOffset = 0;
@@ -87,7 +137,7 @@ public class Vessel {
             positionField = CraftBlockState.class.getDeclaredField("position");
             positionField.setAccessible(true);
             BlockPos newPosition = new BlockPos(x, y, z);
-            positionField.set(block, newPosition);
+            positionField.set((CraftBlockState)block, newPosition);
         }
         catch (Exception e) {
             Bukkit.getLogger().severe(e.toString());
@@ -117,7 +167,7 @@ public class Vessel {
                     new FixedMetadataValue(owningPlugin, name));
 
             CraftBlockState block = (CraftBlockState) curBlock.getState();
-            m_blocks.add(block);
+            m_blocks.add(new BlockInfo(block));
             if(m_blocks.size() >= MAX_VESSEL_SZ)
             {
                 return;
@@ -157,38 +207,38 @@ public class Vessel {
             case EAST_NORTH_EAST:
             case EAST_SOUTH_EAST:
             case NORTH_EAST:
-                m_blocks.sort(Comparator.comparing(BlockState::getX));
+                m_blocks.sort(Comparator.comparing(BlockInfo::getPriority).thenComparing(BlockInfo::getX));
                 moveBlocks(-engineSign.velocity, 0, 0);
                 break;
             case WEST:
             case WEST_NORTH_WEST:
             case WEST_SOUTH_WEST:
             case SOUTH_WEST:
-                m_blocks.sort(Comparator.comparing(BlockState::getX).reversed());
+                m_blocks.sort(Comparator.comparing(BlockInfo::getPriority).thenComparing(BlockInfo::getX).reversed());
                 moveBlocks(engineSign.velocity, 0, 0);
                 break;
             case SOUTH:
             case SOUTH_SOUTH_WEST:
             case SOUTH_SOUTH_EAST:
             case SOUTH_EAST:
-                m_blocks.sort(Comparator.comparing(BlockState::getZ));
+                m_blocks.sort(Comparator.comparing(BlockInfo::getPriority).thenComparing(BlockInfo::getZ));
                 moveBlocks(0, 0, -engineSign.velocity);
                 break;
             case NORTH:
             case NORTH_NORTH_EAST:
             case NORTH_NORTH_WEST:
             case NORTH_WEST:
-                m_blocks.sort(Comparator.comparing(BlockState::getZ).reversed());
+                m_blocks.sort(Comparator.comparing(BlockInfo::getPriority).thenComparing(BlockInfo::getZ).reversed());
                 moveBlocks(0, 0, engineSign.velocity);
                 break;
         }
     }
     public void moveUp() {
-        m_blocks.sort(Comparator.comparing(BlockState::getY).reversed());
+        m_blocks.sort(Comparator.comparing(BlockInfo::getPriority).thenComparing(BlockInfo::getY).reversed());
         moveBlocks(0, 1, 0);
     }
     public void moveDown() {
-        m_blocks.sort(Comparator.comparing(BlockState::getY));
+        m_blocks.sort(Comparator.comparing(BlockInfo::getPriority).thenComparing(BlockInfo::getY));
     }
 
     public void rotateRight() {
@@ -204,10 +254,8 @@ public class Vessel {
         this.zBlockOffset += z;
 
         Bukkit.getLogger().info("Moving blocks!");
-        for (CraftBlockState block : m_blocks) {
-            block.getLocation().getBlock().setType(Material.AIR);
-            setStatePosition(block, block.getX() + x, block.getY() + y, block.getZ() + z);
-            block.update(true);
+        for (BlockInfo block : m_blocks) {
+            block.getState().getLocation().getBlock().setType(Material.AIR);
         }
     }
 
