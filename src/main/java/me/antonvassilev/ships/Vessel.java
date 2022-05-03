@@ -50,7 +50,7 @@ public class Vessel {
                 new FixedMetadataValue(owningPlugin, name));
         startBlock.setMetadata(VESSEL_CONTROL_TYPE_METADATA_KEY,
                 new FixedMetadataValue(owningPlugin, LicenseSign.METADATA_KEY));
-        this.licenseSign = new LicenseSign(startBlock);
+        this.licenseSign = new LicenseSign(startBlock.getState());
         discoverVesselFromBlock(startBlock);
     }
 
@@ -63,7 +63,7 @@ public class Vessel {
                 new FixedMetadataValue(owningPlugin, EngineSign.METADATA_KEY));
         eventBlock.setMetadata(VESSEL_NAME_METADATA_KEY,
                 new FixedMetadataValue(owningPlugin, name));
-        this.engineSign = new EngineSign(eventBlock);
+        this.engineSign = new EngineSign(eventBlock.getState());
     }
 
     private void discoverVesselFromBlock(Block start_block)
@@ -169,7 +169,6 @@ public class Vessel {
     }
 
     private void moveBlocks(int x, int y, int z) {
-
         for (Block block : m_blocks) {
             Location blockLoc = block.getLocation();
             Location newLoc = blockLoc.add(x, y, z);
@@ -182,8 +181,8 @@ public class Vessel {
     // Containers for the different types of signs
     //
     static class ShipSign {
-        protected final Block block;
-        public ShipSign(Block block) {
+        protected final BlockState block;
+        public ShipSign(BlockState block) {
             this.block = block;
         }
     }
@@ -192,7 +191,7 @@ public class Vessel {
         int velocity;
         private static final int MAX_VELOCITY = 10;
         public static final String METADATA_KEY = "ENGINE";
-        public EngineSign(Block block) {
+        public EngineSign(BlockState block) {
             super(block);
             this.velocity = 1;
         }
@@ -216,7 +215,7 @@ public class Vessel {
 
     static class LicenseSign extends ShipSign {
         public static final String METADATA_KEY = "LICENSE";
-        public LicenseSign(Block block) {
+        public LicenseSign(BlockState block) {
             super(block);
         }
     }
