@@ -6,6 +6,7 @@
 
 # IntelliJ
 out/
+.idea/
 
 # Compiled class file
 *.class

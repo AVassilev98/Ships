@@ -1,12 +1,12 @@
 package me.antonvassilev.ships;
 
-import com.sun.jmx.remote.internal.ArrayQueue;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.Location;
-import org.bukkit.block.data.BlockData;
+import org.bukkit.metadata.FixedMetadataValue;
+import org.bukkit.plugin.Plugin;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -18,7 +18,44 @@ public class Vessel {
     // size of workList -> max number of blocks to check for largest case (single column of blocks)
     final private static int MAX_SEARCH_SPACE = (MAX_VESSEL_SZ * 4) + 2;
 
-    ArrayList<Block> m_blocks = new ArrayList<>();
+    // Metadata key constants
+    public static final String VESSEL_NAME_METADATA_KEY = "VESSEL_NAME";
+    public static final String VESSEL_CONTROL_TYPE_METADATA_KEY = "VESSEL_CONTROL_TYPE";
+
+    private final Plugin owningPlugin;
+    private final String name;
+    private final ArrayList<Block> m_blocks = new ArrayList<>();
+    private final LicenseSign licenseSign;
+    private EngineSign engineSign;
+
+    Vessel(Plugin owningPlugin, String name, Block startBlock)
+    {
+        this.name = name;
+        this.owningPlugin = owningPlugin;
+
+        // Engine sign isn't necessary to create vessel, can be added after.
+        this.engineSign = null;
+
+        // Set the metadata for the licenseSign block, then discover vessel blocks.
+        startBlock.setMetadata(VESSEL_NAME_METADATA_KEY,
+                new FixedMetadataValue(owningPlugin, name));
+        startBlock.setMetadata(VESSEL_CONTROL_TYPE_METADATA_KEY,
+                new FixedMetadataValue(owningPlugin, LicenseSign.METADATA_KEY));
+        this.licenseSign = new LicenseSign(startBlock);
+        discoverVesselFromBlock(startBlock);
+    }
+
+    /**
+     * Sets the metadata on an engine sign block and adds it to the vessel.
+     * @param eventBlock Block
+     */
+    public void addEngineSign(Block eventBlock) {
+        eventBlock.setMetadata(VESSEL_CONTROL_TYPE_METADATA_KEY,
+                new FixedMetadataValue(owningPlugin, EngineSign.METADATA_KEY));
+        eventBlock.setMetadata(VESSEL_NAME_METADATA_KEY,
+                new FixedMetadataValue(owningPlugin, name));
+        this.engineSign = new EngineSign(eventBlock);
+    }
 
     private void discoverVesselFromBlock(Block start_block)
     {
@@ -41,6 +78,10 @@ public class Vessel {
                 continue;
             }
 
+            // Set the metadata on each vessel block.
+            curBlock.setMetadata(VESSEL_NAME_METADATA_KEY,
+                    new FixedMetadataValue(owningPlugin, name));
+
             m_blocks.add(curBlock);
             if(m_blocks.size() >= MAX_VESSEL_SZ)
             {
@@ -59,51 +100,61 @@ public class Vessel {
         }
     }
 
-    Vessel(Block startBlock)
-    {
-        discoverVesselFromBlock(startBlock);
+    //
+    // Movement
+    //
+
+    public void moveForward() {
+        // TODO: Forward is not always +x direction.
+        m_blocks.sort(Comparator.comparing(Block::getX));
+        moveBlocks(1, 0, 0);
+    }
+    public void moveUp() {
+        m_blocks.sort(Comparator.comparing(Block::getY).reversed());
+        moveBlocks(0, 1, 0);
+    }
+    public void moveDown() {
+        m_blocks.sort(Comparator.comparing(Block::getY));
+        moveBlocks(0, -1, 0);
     }
 
-    public void moveForward()
-    {
-        m_blocks.sort(
-            new Comparator<Block>() {
-                @Override
-                public int compare(Block o1, Block o2) {
-                    if (o1.getX() < o2.getX())
-                    {
-                        return 1;
-                    }
-                    else if (o1.getX() > o2.getX())
-                    {
-                        return -1;
-                    }
-                    return 0;
-                }
-            }
-        );
-        for (Block block : m_blocks)
-        {
+    public void rotateRight() {
+        // TODO: Implement
+    }
+    public void rotateLeft() {
+        // TODO: Implement
+    }
+
+    private void moveBlocks(int x, int y, int z) {
+        for (Block block : m_blocks) {
             Location blockLoc = block.getLocation();
-            Location newLoc = blockLoc.add(1, 0, 0);
-            newLoc.getBlock().setType(block.getType());
+            Location newLoc = blockLoc.add(x, y, z);
+            newLoc.getBlock().setBlockData(block.getBlockData());
             block.setType(Material.AIR);
         }
     }
-    public void rotateRight()
-    {
-        // TODO: Implement
+
+    //
+    // Containers for the different types of signs
+    //
+    static class ShipSign {
+        private final Block block;
+        public ShipSign(Block block) {
+            this.block = block;
+        }
     }
-    public void rotateLeft()
-    {
-        // TODO: Implement
+
+    static class EngineSign extends ShipSign {
+        public static final String METADATA_KEY = "ENGINE";
+        public EngineSign(Block block) {
+            super(block);
+        }
     }
-    public void moveUp()
-    {
-        // TODO: Implement
-    }
-    public void moveDown()
-    {
-        // TODO: Implement
+
+    static class LicenseSign extends ShipSign {
+        public static final String METADATA_KEY = "LICENSE";
+        public LicenseSign(Block block) {
+            super(block);
+        }
     }
 }
