@@ -23,60 +23,9 @@ import java.util.HashSet;
 import java.util.*;
 import static java.lang.Math.min;
 import static java.lang.Math.max;
-
+import java.util.stream.Collectors;
 
 public class Vessel {
-
-    private class BlockInfo
-    {
-        private CraftBlockState state;
-        private final int priority;
-        public BlockInfo(CraftBlockState state)
-        {
-            this.state = state;
-            BlockData blockData = state.getBlockData();
-            Material block = state.getType();
-            if (blockData instanceof Sign ||
-                blockData instanceof Switch ||
-                blockData instanceof Rail ||
-                blockData instanceof RedstoneWire ||
-                blockData instanceof Ageable ||
-                block == Material.TORCH ||
-                block == Material.WALL_TORCH ||
-                block == Material.REDSTONE_TORCH ||
-                block == Material.REDSTONE_WALL_TORCH ||
-                block == Material.SOUL_TORCH ||
-                block == Material.SOUL_WALL_TORCH
-            ) {
-                Bukkit.getLogger().info("Found Attachable");
-                this.priority = 1;
-            }
-            else {
-                this.priority = 0;
-            }
-        }
-
-        public int getPriority()
-        {
-            return this.priority;
-        }
-        public CraftBlockState getState()
-        {
-            return this.state;
-        }
-        public int getX()
-        {
-            return this.state.getX();
-        }
-        public int getY()
-        {
-            return this.state.getY();
-        }
-        public int getZ()
-        {
-            return this.state.getZ();
-        }
-    };
 
     final private static int MAX_VESSEL_SZ = 5000;
     // size of workList -> max number of blocks to check for largest case (single column of blocks)
@@ -95,9 +44,9 @@ public class Vessel {
     private int xBlockOffset = 0;
     private int yBlockOffset = 0;
     private int zBlockOffset = 0;
+    private final HashMap<Block, SteeringSign> steeringSigns = new HashMap<>();
 
-    Vessel(Plugin owningPlugin, String name, Block startBlock)
-    {
+    Vessel(Plugin owningPlugin, String name, Block startBlock) {
         this.name = name;
         this.owningPlugin = owningPlugin;
         this.world = startBlock.getWorld();
@@ -109,51 +58,53 @@ public class Vessel {
         startBlock.setMetadata(VESSEL_NAME_METADATA_KEY,
                 new FixedMetadataValue(owningPlugin, name));
         startBlock.setMetadata(VESSEL_CONTROL_TYPE_METADATA_KEY,
-                new FixedMetadataValue(owningPlugin, LicenseSign.METADATA_KEY));
-        this.licenseSign = new LicenseSign(startBlock.getState());
-        this.xBlockOffset = this.licenseSign.block.getX();
-        this.yBlockOffset = this.licenseSign.block.getY();
-        this.zBlockOffset = this.licenseSign.block.getZ();
+                new FixedMetadataValue(owningPlugin, LicenseSign.METADATA_VALUE));
 
+        this.licenseSign = new LicenseSign(startBlock.getState());
+        this.xBlockOffset = this.licenseSign.state.getX();
+        this.yBlockOffset = this.licenseSign.state.getY();
+        this.zBlockOffset = this.licenseSign.state.getZ();
         discoverVesselFromBlock(startBlock);
     }
 
     /**
      * Sets the metadata on an engine sign block and adds it to the vessel.
-     * @param eventBlock Block
+     * @param block Block
      */
-    public void addEngineSign(Block eventBlock) {
-        eventBlock.setMetadata(VESSEL_CONTROL_TYPE_METADATA_KEY,
-                new FixedMetadataValue(owningPlugin, EngineSign.METADATA_KEY));
-        eventBlock.setMetadata(VESSEL_NAME_METADATA_KEY,
+    public void addEngineSign(Block block) {
+        if(this.engineSign != null) {
+            owningPlugin.getLogger().info("Engine already registered for ship.");
+            return;
+        }
+        block.setMetadata(VESSEL_CONTROL_TYPE_METADATA_KEY,
+                new FixedMetadataValue(owningPlugin, EngineSign.METADATA_VALUE));
+        block.setMetadata(VESSEL_NAME_METADATA_KEY,
                 new FixedMetadataValue(owningPlugin, name));
-        CraftBlockState blockState = (CraftBlockState) eventBlock.getState();
+        CraftBlockState blockState = (CraftBlockState) block.getState();
         this.engineSign = new EngineSign(blockState);
         this.m_blocks.add(new BlockInfo(blockState));
     }
 
-    public void moveEngineMetadata(int x, int y, int z)
-    {
-        this.engineSign.block.getBlock().removeMetadata(
+    public void moveEngineMetadata(int x, int y, int z) {
+        this.engineSign.state.getBlock().removeMetadata(
                 VESSEL_CONTROL_TYPE_METADATA_KEY, owningPlugin
         );
-        this.engineSign.block.getBlock().removeMetadata(
+        this.engineSign.state.getBlock().removeMetadata(
                 VESSEL_NAME_METADATA_KEY, owningPlugin
         );
 
-        int newX = this.engineSign.block.getX() + x;
-        int newY = this.engineSign.block.getY() + y;
-        int newZ = this.engineSign.block.getZ() + z;
+        int newX = this.engineSign.state.getX() + x;
+        int newY = this.engineSign.state.getY() + y;
+        int newZ = this.engineSign.state.getZ() + z;
 
         Block newEngineBlock = this.world.getBlockAt(newX, newY, newZ);
         newEngineBlock.setMetadata(VESSEL_CONTROL_TYPE_METADATA_KEY,
-                new FixedMetadataValue(owningPlugin, EngineSign.METADATA_KEY));
+                new FixedMetadataValue(owningPlugin, EngineSign.METADATA_VALUE));
         newEngineBlock.setMetadata(VESSEL_NAME_METADATA_KEY,
                 new FixedMetadataValue(owningPlugin, name));
     }
 
-    void setStatePosition(CraftBlockState block, int x, int y, int z)
-    {
+    void setStatePosition(CraftBlockState block, int x, int y, int z) {
         Field positionField = null;
         try {
             positionField = CraftBlockState.class.getDeclaredField("position");
@@ -167,8 +118,12 @@ public class Vessel {
         }
     }
 
-    private void discoverVesselFromBlock(Block start_block)
-    {
+    public void addSteeringSign(Block block, String direction) {
+        SteeringSign steeringSign = new SteeringSign(block, direction);
+        this.steeringSigns.put(block, steeringSign);
+    }
+
+    private void discoverVesselFromBlock(Block start_block) {
         HashSet<Block> visitedBlocks = new HashSet<>();
         ArrayDeque<Block> workList = new ArrayDeque<>(MAX_SEARCH_SPACE);
         workList.add(start_block);
@@ -221,10 +176,7 @@ public class Vessel {
     }
 
     public void moveForward() {
-        // TODO: Forward is not always +x direction.
-
-        switch (engineSign.getMovementDirection())
-        {
+        switch (engineSign.getMovementDirection()) {
             case EAST:
             case EAST_NORTH_EAST:
             case EAST_SOUTH_EAST:
@@ -263,10 +215,24 @@ public class Vessel {
         m_blocks.sort(Comparator.comparing(BlockInfo::getPriority).thenComparing(BlockInfo::getY));
     }
 
-    public void rotateRight() {
+    public void turn(Block block) {
+        SteeringSign sign = this.steeringSigns.get(block);
+        if(sign != null) {
+            switch (sign.getDirection()) {
+                case LEFT:
+                    rotateLeft();
+                    break;
+                case RIGHT:
+                    rotateRight();
+                    break;
+            }
+        }
+    }
+
+    private void rotateRight() {
         // TODO: Implement
     }
-    public void rotateLeft() {
+    private void rotateLeft() {
         // TODO: Implement
     }
 
@@ -295,31 +261,31 @@ public class Vessel {
     // Containers for the different types of signs
     //
     static class ShipSign {
-        protected final BlockState block;
-        public ShipSign(BlockState block) {
-            this.block = block;
+        protected final BlockState state;
+        public ShipSign(BlockState state) {
+            this.state = state;
         }
     }
 
     static class EngineSign extends ShipSign {
         int velocity;
         private static final int MAX_VELOCITY = 10;
-        public static final String METADATA_KEY = "ENGINE";
-        public EngineSign(BlockState block) {
-            super(block);
+        public static final String METADATA_VALUE = "ENGINE";
+        public EngineSign(BlockState state) {
+            super(state);
             this.velocity = 1;
         }
-        public void incrementVelocity()
-        {
+
+        public void incrementVelocity() {
             this.velocity = min(this.velocity + 1, MAX_VELOCITY);
         }
-        public void decrementVelocity()
-        {
+
+        public void decrementVelocity() {
             this.velocity = max(this.velocity + 1, 1);
         }
-        public BlockFace getMovementDirection()
-        {
-            BlockData signData = block.getBlockData();
+
+        public BlockFace getMovementDirection() {
+            BlockData signData = state.getBlockData();
             if (signData instanceof Rotatable) {
                 return ((Rotatable) signData).getRotation();
             }
@@ -328,9 +294,129 @@ public class Vessel {
     }
 
     static class LicenseSign extends ShipSign {
-        public static final String METADATA_KEY = "LICENSE";
-        public LicenseSign(BlockState block) {
-            super(block);
+        public static final String METADATA_VALUE = "LICENSE";
+        public LicenseSign(BlockState state) {
+            super(state);
+        }
+    }
+
+    static class SteeringSign extends ShipSign {
+        public static final String METADATA_VALUE = "STEERING";
+        private final Direction direction;
+        private final Block block;
+        public SteeringSign(Block block, String directionStr) {
+            super(block.getState());
+            this.block = block;
+            this.direction = strToDirection(directionStr);
+        }
+
+        public Direction getDirection() {
+            return direction;
+        }
+
+        public static Direction strToDirection(String val) {
+            if(val.equals("<")) return Direction.LEFT;
+            if(val.equals(">")) return Direction.RIGHT;
+            throw new IllegalArgumentException("Unsupported steering direction");
+        }
+
+        enum Direction {
+            LEFT,
+            RIGHT
+        }
+    }
+
+    private class BlockInfo {
+        private CraftBlockState state;
+        private final int priority;
+        public BlockInfo(CraftBlockState state) {
+            this.state = state;
+            BlockData blockData = state.getBlockData();
+            Material block = state.getType();
+            if (blockData instanceof Sign ||
+                    blockData instanceof Switch ||
+                    blockData instanceof Rail ||
+                    blockData instanceof RedstoneWire ||
+                    blockData instanceof Ageable ||
+                    block == Material.TORCH ||
+                    block == Material.WALL_TORCH ||
+                    block == Material.REDSTONE_TORCH ||
+                    block == Material.REDSTONE_WALL_TORCH ||
+                    block == Material.SOUL_TORCH ||
+                    block == Material.SOUL_WALL_TORCH
+            ) {
+                Bukkit.getLogger().info("Found Attachable");
+                this.priority = 1;
+            }
+            else {
+                this.priority = 0;
+            }
+        }
+
+        public int getPriority()
+        {
+            return this.priority;
+        }
+        public CraftBlockState getState()
+        {
+            return this.state;
+        }
+        public int getX()
+        {
+            return this.state.getX();
+        }
+        public int getY()
+        {
+            return this.state.getY();
+        }
+        public int getZ()
+        {
+            return this.state.getZ();
+        }
+    };
+
+    /**
+     * Enum class that supports string initialization, and allows fetching enum
+     * by string value.
+     */
+    enum ShipSignType {
+        LICENSE("[name]"),
+        STEERING("[steer]"),
+        ENGINE("[move]"),
+        UNKNOWN("unknown");
+
+        private static final Map<String, ShipSignType> strToShipSignTypeFromStringMap =
+                Arrays.stream(ShipSignType.values()).collect(Collectors.toMap(
+                        ShipSignType::getValue,
+                        ShipSignType::getShipSignType
+                ));
+
+        private static final Map<ShipSignType, String> shipSignTypeToStringMap =
+                Arrays.stream(ShipSignType.values()).collect(Collectors.toMap(
+                        ShipSignType::getShipSignType,
+                        ShipSignType::getValue
+                ));
+
+        private final ShipSignType shipSignType;
+        private final String value;
+
+        ShipSignType(String str) {
+            this.shipSignType = this;
+            this.value = str;
+        }
+
+        public ShipSignType getShipSignType() { return shipSignType; }
+
+        public String getValue() { return value; }
+
+        public static ShipSignType shipSignTypeFromStringFromString(String str) {
+            ShipSignType type = strToShipSignTypeFromStringMap.get(str);
+            if (type != null) return type;
+            return UNKNOWN;
+        }
+
+        public static Optional<String> shipSignTypeToString(ShipSignType signType) {
+            return Optional.ofNullable(shipSignTypeToStringMap.get(signType));
         }
     }
 }
