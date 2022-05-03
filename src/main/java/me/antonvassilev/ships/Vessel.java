@@ -257,6 +257,14 @@ public class Vessel {
         for (BlockInfo block : m_blocks) {
             block.getState().getLocation().getBlock().setType(Material.AIR);
         }
+
+        ListIterator<BlockInfo> ri = m_blocks.listIterator(m_blocks.size());
+        while (ri.hasPrevious())
+        {
+            CraftBlockState block = ri.previous().getState();
+            setStatePosition(block, block.getX() + x, block.getY() + y, block.getZ() + z);
+            block.update(true);
+        }
     }
 
     //
