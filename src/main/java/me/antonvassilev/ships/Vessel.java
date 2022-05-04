@@ -330,14 +330,20 @@ public class Vessel {
      * by string value.
      */
     enum ShipSignType {
-        LICENSE("[name]"),
-        STEERING("[steer]"),
-        ENGINE("[move]"),
-        UNKNOWN("unknown");
+        LICENSE("[name]", "LICENSE"),
+        STEERING("[steer]", "STEERING"),
+        ENGINE("[move]", "ENGINE"),
+        UNKNOWN("unknown", "UNKNOWN");
 
-        private static final Map<String, ShipSignType> strToShipSignTypeFromStringMap =
+        private static final Map<String, ShipSignType> strToShipSignTypeMap =
                 Arrays.stream(ShipSignType.values()).collect(Collectors.toMap(
                         ShipSignType::getValue,
+                        ShipSignType::getShipSignType
+                ));
+
+        private static final Map<String, ShipSignType> metadataValueToSignTypeMap =
+                Arrays.stream(ShipSignType.values()).collect(Collectors.toMap(
+                        ShipSignType::getMetadataValue,
                         ShipSignType::getShipSignType
                 ));
 
@@ -349,24 +355,30 @@ public class Vessel {
 
         private final ShipSignType shipSignType;
         private final String value;
+        private final String metadataValue;
 
-        ShipSignType(String str) {
+        ShipSignType(String str, String metadataValue) {
             this.shipSignType = this;
             this.value = str;
+            this.metadataValue = metadataValue;
         }
 
         public ShipSignType getShipSignType() { return shipSignType; }
-
         public String getValue() { return value; }
+        public String getMetadataValue() { return metadataValue; }
 
-        public static ShipSignType shipSignTypeFromStringFromString(String str) {
-            ShipSignType type = strToShipSignTypeFromStringMap.get(str);
+        public static ShipSignType shipSignTypeFromString(String str) {
+            ShipSignType type = strToShipSignTypeMap.get(str);
             if (type != null) return type;
             return UNKNOWN;
         }
 
-        public static Optional<String> shipSignTypeToString(ShipSignType signType) {
+        public static Optional<String> strToShipSignType(ShipSignType signType) {
             return Optional.ofNullable(shipSignTypeToStringMap.get(signType));
+        }
+
+        public static Optional<ShipSignType> metadataStringToShipSignType(String metadataValue) {
+            return Optional.ofNullable(metadataValueToSignTypeMap.get(metadataValue));
         }
     }
 }

@@ -90,7 +90,7 @@ public class SignWriteEventHandler implements Listener {
         signComponents.stream().findFirst().ifPresent(component -> {
             if (!(component instanceof TextComponent)) return;
             Vessel.ShipSignType type = Vessel.ShipSignType.
-                    shipSignTypeFromStringFromString(((TextComponent) component).content());
+                    shipSignTypeFromString(((TextComponent) component).content());
             // Grab the remaining components and pass them down to the handlers.
             List<Component> components = signComponents.stream().skip(1).collect(Collectors.toList());
             switch (type)
