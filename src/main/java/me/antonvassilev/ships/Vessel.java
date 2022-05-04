@@ -1,7 +1,6 @@
 package me.antonvassilev.ships;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.world.level.block.TorchBlock;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -87,11 +86,9 @@ public class Vessel {
 
     public void moveEngineMetadata(int x, int y, int z) {
         this.engineSign.state.getBlock().removeMetadata(
-                VESSEL_CONTROL_TYPE_METADATA_KEY, owningPlugin
-        );
+                VESSEL_CONTROL_TYPE_METADATA_KEY, owningPlugin);
         this.engineSign.state.getBlock().removeMetadata(
-                VESSEL_NAME_METADATA_KEY, owningPlugin
-        );
+                VESSEL_NAME_METADATA_KEY, owningPlugin);
 
         int newX = this.engineSign.state.getX() + x;
         int newY = this.engineSign.state.getY() + y;
