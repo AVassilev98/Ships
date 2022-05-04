@@ -129,8 +129,8 @@ public class Vessel {
         {
             Block curBlock = workList.remove();
             if (curBlock.isLiquid() ||
-                curBlock.isEmpty() ||
-                visitedBlocks.contains(curBlock)
+                    curBlock.isEmpty() ||
+                    visitedBlocks.contains(curBlock)
             )
             {
                 continue;
