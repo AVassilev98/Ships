@@ -55,7 +55,17 @@ public class SignClickEventHandler implements Listener {
     }
 
     private void handleSteeringSign(Vessel vessel, PlayerInteractEvent event) {
-        vessel.turn(event.getClickedBlock());
+        switch (event.getAction()) {
+            case LEFT_CLICK_BLOCK: {
+                vessel.rotateRight();
+                break;
+            }
+            case RIGHT_CLICK_BLOCK: {
+                vessel.rotateLeft();
+            }
+            default:
+                break;
+        }
     }
 
     private void handleEngineSign(Vessel vessel, PlayerInteractEvent event) {

@@ -39,11 +39,11 @@ public class Vessel {
     private final String name;
     private final ArrayList<BlockInfo> m_blocks = new ArrayList<BlockInfo>();
     private final LicenseSign licenseSign;
+    private SteeringSign steeringSign;
     private EngineSign engineSign;
     private int xBlockOffset = 0;
     private int yBlockOffset = 0;
     private int zBlockOffset = 0;
-    private final HashMap<Block, SteeringSign> steeringSigns = new HashMap<>();
 
     Vessel(Plugin owningPlugin, String name, Block startBlock) {
         this.name = name;
@@ -51,6 +51,7 @@ public class Vessel {
         this.world = startBlock.getWorld();
 
         // Engine sign isn't necessary to create vessel, can be added after.
+        this.engineSign = null;
         this.engineSign = null;
 
         // Set the metadata for the licenseSign block, then discover vessel blocks.
@@ -116,8 +117,7 @@ public class Vessel {
     }
 
     public void addSteeringSign(Block block, String direction) {
-        SteeringSign steeringSign = new SteeringSign(block, direction);
-        this.steeringSigns.put(block, steeringSign);
+        this.steeringSign = new SteeringSign(block.getState());
     }
 
     private void discoverVesselFromBlock(Block start_block) {
@@ -212,24 +212,11 @@ public class Vessel {
         m_blocks.sort(Comparator.comparing(BlockInfo::getPriority).thenComparing(BlockInfo::getY));
     }
 
-    public void turn(Block block) {
-        SteeringSign sign = this.steeringSigns.get(block);
-        if(sign != null) {
-            switch (sign.getDirection()) {
-                case LEFT:
-                    rotateLeft();
-                    break;
-                case RIGHT:
-                    rotateRight();
-                    break;
-            }
-        }
-    }
-
-    private void rotateRight() {
+    public void rotateRight() {
         // TODO: Implement
     }
-    private void rotateLeft() {
+
+    public void rotateLeft() {
         // TODO: Implement
     }
 
@@ -299,32 +286,13 @@ public class Vessel {
 
     static class SteeringSign extends ShipSign {
         public static final String METADATA_VALUE = "STEERING";
-        private final Direction direction;
-        private final Block block;
-        public SteeringSign(Block block, String directionStr) {
-            super(block.getState());
-            this.block = block;
-            this.direction = strToDirection(directionStr);
-        }
-
-        public Direction getDirection() {
-            return direction;
-        }
-
-        public static Direction strToDirection(String val) {
-            if(val.equals("<")) return Direction.LEFT;
-            if(val.equals(">")) return Direction.RIGHT;
-            throw new IllegalArgumentException("Unsupported steering direction");
-        }
-
-        enum Direction {
-            LEFT,
-            RIGHT
+        public SteeringSign(BlockState state) {
+            super(state);
         }
     }
 
-    private class BlockInfo {
-        private CraftBlockState state;
+    private static class BlockInfo {
+        private final CraftBlockState state;
         private final int priority;
         public BlockInfo(CraftBlockState state) {
             this.state = state;
@@ -350,26 +318,11 @@ public class Vessel {
             }
         }
 
-        public int getPriority()
-        {
-            return this.priority;
-        }
-        public CraftBlockState getState()
-        {
-            return this.state;
-        }
-        public int getX()
-        {
-            return this.state.getX();
-        }
-        public int getY()
-        {
-            return this.state.getY();
-        }
-        public int getZ()
-        {
-            return this.state.getZ();
-        }
+        public CraftBlockState getState() { return this.state; }
+        public int getPriority() { return this.priority; }
+        public int getX() { return this.state.getX(); }
+        public int getY() { return this.state.getY(); }
+        public int getZ() { return this.state.getZ(); }
     };
 
     /**
