@@ -185,43 +185,40 @@ public class Vessel {
     }
 
     public void moveForward() {
+        m_blocks.sort(Comparator.comparing(BlockInfo::getPriority));
         switch (engineSign.getMovementDirection()) {
             case EAST:
             case EAST_NORTH_EAST:
             case EAST_SOUTH_EAST:
             case NORTH_EAST:
-                m_blocks.sort(Comparator.comparing(BlockInfo::getPriority).thenComparing(BlockInfo::getX));
                 moveBlocks(-engineSign.velocity, 0, 0);
                 break;
             case WEST:
             case WEST_NORTH_WEST:
             case WEST_SOUTH_WEST:
             case SOUTH_WEST:
-                m_blocks.sort(Comparator.comparing(BlockInfo::getPriority).thenComparing(BlockInfo::getX).reversed());
                 moveBlocks(engineSign.velocity, 0, 0);
                 break;
             case SOUTH:
             case SOUTH_SOUTH_WEST:
             case SOUTH_SOUTH_EAST:
             case SOUTH_EAST:
-                m_blocks.sort(Comparator.comparing(BlockInfo::getPriority).thenComparing(BlockInfo::getZ));
                 moveBlocks(0, 0, -engineSign.velocity);
                 break;
             case NORTH:
             case NORTH_NORTH_EAST:
             case NORTH_NORTH_WEST:
             case NORTH_WEST:
-                m_blocks.sort(Comparator.comparing(BlockInfo::getPriority).thenComparing(BlockInfo::getZ).reversed());
                 moveBlocks(0, 0, engineSign.velocity);
                 break;
         }
     }
     public void moveUp() {
-        m_blocks.sort(Comparator.comparing(BlockInfo::getPriority).thenComparing(BlockInfo::getY).reversed());
+        m_blocks.sort(Comparator.comparing(BlockInfo::getPriority));
         moveBlocks(0, 1, 0);
     }
     public void moveDown() {
-        m_blocks.sort(Comparator.comparing(BlockInfo::getPriority).thenComparing(BlockInfo::getY));
+        m_blocks.sort(Comparator.comparing(BlockInfo::getPriority));
     }
 
     public void rotateRight() {
@@ -341,10 +338,10 @@ public class Vessel {
                     block == Material.SOUL_WALL_TORCH
             ) {
                 Bukkit.getLogger().info("Found Attachable");
-                this.priority = 1;
+                this.priority = 0;
             }
             else {
-                this.priority = 0;
+                this.priority = 1;
             }
         }
 
