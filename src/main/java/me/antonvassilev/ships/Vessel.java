@@ -52,7 +52,7 @@ public class Vessel {
 
         // Engine sign isn't necessary to create vessel, can be added after.
         this.engineSign = null;
-        this.engineSign = null;
+        this.steeringSign = null;
 
         // Set the metadata for the licenseSign block, then discover vessel blocks.
         startBlock.setMetadata(VESSEL_NAME_METADATA_KEY,
