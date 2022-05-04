@@ -27,8 +27,7 @@ import java.util.HashSet;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static java.lang.Math.min;
-import static java.lang.Math.max;
+import static java.lang.Math.*;
 
 
 public class Vessel {
@@ -111,6 +110,93 @@ public class Vessel {
                 new FixedMetadataValue(owningPlugin, name));
     }
 
+    public void rotateEngineMetadata(Rotation rotation)
+    {
+        int sinFactor = 0;
+        switch (rotation)
+        {
+            case LEFT:
+                sinFactor = 1;
+                break;
+            case RIGHT:
+                sinFactor = -1;
+                break;
+        }
+
+        this.engineSign.getBlock().removeMetadata(
+                VESSEL_CONTROL_TYPE_METADATA_KEY, owningPlugin
+        );
+        this.engineSign.getBlock().removeMetadata(
+                VESSEL_NAME_METADATA_KEY, owningPlugin
+        );
+
+        int oldX = this.engineSign.getX() - xBlockOffset;
+        int oldZ = this.engineSign.getZ() - zBlockOffset;
+
+        int newX = (-oldZ * sinFactor) + xBlockOffset;
+        int newZ = (oldX * sinFactor) + zBlockOffset;
+
+        Block newEngineBlock = this.world.getBlockAt(newX, this.engineSign.getY(), newZ);
+        newEngineBlock.setMetadata(VESSEL_CONTROL_TYPE_METADATA_KEY,
+                new FixedMetadataValue(owningPlugin, EngineSign.METADATA_VALUE));
+        newEngineBlock.setMetadata(VESSEL_NAME_METADATA_KEY,
+                new FixedMetadataValue(owningPlugin, name));
+    }
+
+    public void moveSteeringMetadata(int x, int y, int z)
+    {
+        this.steeringSign.getBlock().removeMetadata(
+                VESSEL_CONTROL_TYPE_METADATA_KEY, owningPlugin
+        );
+        this.steeringSign.getBlock().removeMetadata(
+                VESSEL_NAME_METADATA_KEY, owningPlugin
+        );
+
+        int newX = this.steeringSign.getX() + x;
+        int newY = this.steeringSign.getY() + y;
+        int newZ = this.steeringSign.getZ() + z;
+
+        Block newEngineBlock = this.world.getBlockAt(newX, newY, newZ);
+        newEngineBlock.setMetadata(VESSEL_CONTROL_TYPE_METADATA_KEY,
+                new FixedMetadataValue(owningPlugin, SteeringSign.METADATA_VALUE));
+        newEngineBlock.setMetadata(VESSEL_NAME_METADATA_KEY,
+                new FixedMetadataValue(owningPlugin, name));
+    }
+
+    public void rotateSteeringMetadata(Rotation rotation)
+    {
+        int sinFactor = 0;
+        switch (rotation)
+        {
+            case LEFT:
+                sinFactor = 1;
+                break;
+            case RIGHT:
+                sinFactor = -1;
+                break;
+        }
+
+        this.steeringSign.getBlock().removeMetadata(
+                VESSEL_CONTROL_TYPE_METADATA_KEY, owningPlugin
+        );
+        this.steeringSign.getBlock().removeMetadata(
+                VESSEL_NAME_METADATA_KEY, owningPlugin
+        );
+
+        int oldX = this.steeringSign.getX() - xBlockOffset;
+        int oldZ = this.steeringSign.getZ() - zBlockOffset;
+
+        int newX = (-oldZ * sinFactor) + xBlockOffset;
+        int newZ = (oldX * sinFactor) + zBlockOffset;
+
+        Block newEngineBlock = this.world.getBlockAt(newX, this.steeringSign.getY(), newZ);
+        newEngineBlock.setMetadata(VESSEL_CONTROL_TYPE_METADATA_KEY,
+                new FixedMetadataValue(owningPlugin, SteeringSign.METADATA_VALUE));
+        newEngineBlock.setMetadata(VESSEL_NAME_METADATA_KEY,
+                new FixedMetadataValue(owningPlugin, name));
+    }
+
+
     void setStatePosition(CraftBlockState block, int x, int y, int z) {
         Field positionField = null;
         try {
@@ -126,6 +212,11 @@ public class Vessel {
     }
 
     public void addSteeringSign(Block block, String direction) {
+        block.setMetadata(VESSEL_CONTROL_TYPE_METADATA_KEY,
+                new FixedMetadataValue(owningPlugin, SteeringSign.METADATA_VALUE));
+        block.setMetadata(VESSEL_NAME_METADATA_KEY,
+                new FixedMetadataValue(owningPlugin, name));
+
         this.steeringSign = new SteeringSign((CraftSign) block.getState());
         this.m_blocks.add(new BlockInfo(this.steeringSign));
     }
@@ -213,20 +304,61 @@ public class Vessel {
                 break;
         }
     }
+
     public void moveUp() {
         m_blocks.sort(Comparator.comparing(BlockInfo::getPriority));
         moveBlocks(0, 1, 0);
     }
+
     public void moveDown() {
         m_blocks.sort(Comparator.comparing(BlockInfo::getPriority));
     }
 
+    private enum Rotation {
+        LEFT,
+        RIGHT
+    }
+
+    public void rotateVessel(Rotation rotation) {
+        int sinFactor = 0;
+        switch (rotation)
+        {
+            case LEFT:
+                sinFactor = 1;
+                break;
+            case RIGHT:
+                sinFactor = -1;
+                break;
+        }
+
+        rotateEngineMetadata(rotation);
+        rotateSteeringMetadata(rotation);
+
+        for(BlockInfo block : m_blocks)
+        {
+            block.getState().getLocation().getBlock().setType(Material.AIR);
+        }
+
+        for (BlockInfo block : m_blocks)
+        {
+            int oldX = block.getX() - xBlockOffset;
+            int oldZ = block.getZ() - zBlockOffset;
+
+            int newX = (-oldZ * sinFactor) + xBlockOffset;
+            int newZ = (oldX * sinFactor) + zBlockOffset;
+
+            setStatePosition(block.getState(), newX, block.getY(), newZ);
+            BlockData bd = block.getState().getBlockData();
+            block.getState().update(true, true);
+        }
+    }
+
     public void rotateRight() {
-        // TODO: Implement
+        rotateVessel(Rotation.RIGHT);
     }
 
     public void rotateLeft() {
-        // TODO: Implement
+        rotateVessel(Rotation.LEFT);
     }
 
     private void moveBlocks(int x, int y, int z) {
@@ -235,6 +367,7 @@ public class Vessel {
         this.zBlockOffset += z;
 
         moveEngineMetadata(x, y, z);
+        moveSteeringMetadata(x, y, z);
 
         Bukkit.getLogger().info("Moving blocks!");
         for (BlockInfo block : m_blocks) {
