@@ -4,10 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.TorchBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
-import org.bukkit.Bukkit;
-import org.bukkit.DyeColor;
-import org.bukkit.Material;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
@@ -17,8 +14,10 @@ import org.bukkit.block.data.type.Sign;
 import org.bukkit.block.data.type.Switch;
 import org.bukkit.craftbukkit.v1_18_R2.block.CraftBlockState;
 import org.bukkit.craftbukkit.v1_18_R2.block.CraftSign;
+import org.bukkit.entity.Entity;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.util.Vector;
 
 import java.lang.reflect.Field;
 import java.util.ArrayDeque;
@@ -319,7 +318,118 @@ public class Vessel {
         RIGHT
     }
 
+    public BlockFace getRightFace(BlockFace blockFace) {
+        return getLeftFace(blockFace).getOppositeFace();
+    }
+
+    public BlockFace getLeftFace(BlockFace blockFace) {
+        switch (blockFace) {
+            case NORTH:
+                return BlockFace.EAST;
+            case SOUTH:
+                return BlockFace.WEST;
+            case EAST:
+                return BlockFace.SOUTH;
+            case WEST:
+                return BlockFace.NORTH;
+            case UP:
+                return BlockFace.UP;
+            case DOWN:
+                return BlockFace.DOWN;
+            case NORTH_EAST:
+                return BlockFace.SOUTH_EAST;
+            case NORTH_WEST:
+                return BlockFace.NORTH_EAST;
+            case SOUTH_EAST:
+                return BlockFace.SOUTH_WEST;
+            case SOUTH_WEST:
+                return BlockFace.NORTH_WEST;
+            case WEST_NORTH_WEST:
+                return BlockFace.NORTH_NORTH_EAST;
+            case NORTH_NORTH_WEST:
+                return BlockFace.EAST_NORTH_EAST;
+            case NORTH_NORTH_EAST:
+                return BlockFace.EAST_SOUTH_EAST;
+            case EAST_NORTH_EAST:
+                return BlockFace.SOUTH_SOUTH_EAST;
+            case EAST_SOUTH_EAST:
+                return BlockFace.SOUTH_SOUTH_WEST;
+            case SOUTH_SOUTH_EAST:
+                return BlockFace.WEST_SOUTH_WEST;
+            case SOUTH_SOUTH_WEST:
+                return BlockFace.WEST_NORTH_WEST;
+            case WEST_SOUTH_WEST:
+                return BlockFace.NORTH_NORTH_WEST;
+            case SELF:
+                return BlockFace.SELF;
+        }
+
+        return BlockFace.SELF;
+    }
+
+    public void rotateBlockTexture(BlockState state, Rotation rotation) {
+        BlockData data = state.getBlockData();
+        if(data instanceof Rotatable)
+        {
+            owningPlugin.getLogger().info("Found rotatable!");
+            Rotatable rotatableData = (Rotatable) data;
+            BlockFace orientation = rotatableData.getRotation();
+            if (orientation == BlockFace.DOWN ||
+                orientation == BlockFace.UP ||
+                orientation == BlockFace.SELF)
+            {
+                return;
+            }
+            switch (rotation)
+            {
+                case RIGHT:
+                    rotatableData.setRotation(getRightFace(orientation));
+                    break;
+                case LEFT:
+                    rotatableData.setRotation(getLeftFace(orientation));
+                    break;
+            }
+        }
+        else if (data instanceof Orientable)
+        {
+            owningPlugin.getLogger().info("Found orientable!");
+
+            Orientable orientableData = (Orientable) data;
+            Axis currentAxis = orientableData.getAxis();
+            if (currentAxis == Axis.X) {
+                orientableData.setAxis(Axis.Z);
+            }
+            else if (currentAxis == Axis.Z) {
+                orientableData.setAxis(Axis.X);
+            }
+        }
+        else if ( data instanceof Directional)
+        {
+            owningPlugin.getLogger().info("Found directional!");
+
+            Directional rotatableData = (Directional) data;
+            BlockFace orientation = rotatableData.getFacing();
+            if (orientation == BlockFace.DOWN ||
+                    orientation == BlockFace.UP ||
+                    orientation == BlockFace.SELF)
+            {
+                return;
+            }
+            switch (rotation)
+            {
+                case RIGHT:
+                    rotatableData.setFacing(getRightFace(orientation));
+                    break;
+                case LEFT:
+                    rotatableData.setFacing(getLeftFace(orientation));
+                    break;
+            }
+        }
+        state.setBlockData(data);
+    }
+
     public void rotateVessel(Rotation rotation) {
+        m_blocks.sort(Comparator.comparing(BlockInfo::getPriority));
         int sinFactor = 0;
         switch (rotation)
         {
@@ -333,6 +443,7 @@ public class Vessel {
 
         rotateEngineMetadata(rotation);
         rotateSteeringMetadata(rotation);
+        rotateEntities(rotation);
 
         for(BlockInfo block : m_blocks)
         {
@@ -348,7 +459,8 @@ public class Vessel {
             int newZ = (oldX * sinFactor) + zBlockOffset;
 
             setStatePosition(block.getState(), newX, block.getY(), newZ);
-            BlockData bd = block.getState().getBlockData();
+            BlockState bs = block.getState();
+            rotateBlockTexture(bs, rotation);
             block.getState().update(true, true);
         }
     }
@@ -368,6 +480,7 @@ public class Vessel {
 
         moveEngineMetadata(x, y, z);
         moveSteeringMetadata(x, y, z);
+        moveEntities(x, y, z);
 
         Bukkit.getLogger().info("Moving blocks!");
         for (BlockInfo block : m_blocks) {
@@ -382,6 +495,73 @@ public class Vessel {
             block.update(true);
         }
     }
+
+    private void moveEntities(int x, int y, int z) {
+        Set<Chunk> vesselChunks = new HashSet<>();
+        for (BlockInfo block : m_blocks)
+        {
+            Chunk chunk = block.getState().getLocation().getChunk();
+            vesselChunks.add(chunk);
+        }
+        for (Chunk chunk : vesselChunks)
+        {
+            Entity[] chunkEntities = chunk.getEntities();
+            for (Entity entity : chunkEntities)
+            {
+                Location oldLoc = entity.getLocation();
+                Location newLoc = oldLoc.add(x, y, z);
+                entity.teleport(newLoc);
+            }
+        }
+    }
+
+    private void rotateEntities(Rotation rotation) {
+        float yawDelta = 0.0f;
+        int sinFactor = 0;
+        switch (rotation)
+        {
+            case LEFT:
+                sinFactor = 1;
+                yawDelta = 90.0f;
+                break;
+            case RIGHT:
+                sinFactor = -1;
+                yawDelta = -90.0f;
+                break;
+        }
+
+        Set<Chunk> vesselChunks = new HashSet<>();
+        for (BlockInfo block : m_blocks)
+        {
+            Chunk chunk = block.getState().getLocation().getChunk();
+            vesselChunks.add(chunk);
+        }
+        for (Chunk chunk : vesselChunks)
+        {
+            Entity[] chunkEntities = chunk.getEntities();
+            for (Entity entity : chunkEntities)
+            {
+                Location oldLoc = entity.getLocation();
+                int oldX = oldLoc.getBlockX() - xBlockOffset;
+                int oldZ = oldLoc.getBlockZ() - zBlockOffset;
+
+                int newX = (-oldZ * sinFactor) + xBlockOffset;
+                int newZ = (oldX * sinFactor) + zBlockOffset;
+                Vector oldVelocity = entity.getVelocity();
+
+                Location newLoc = new Location(this.world, newX, oldLoc.getY(), newZ);
+
+                float newYaw = entity.getLocation().getYaw() + yawDelta;
+                float pitch = entity.getLocation().getPitch();
+                newLoc.setYaw(newYaw);
+                newLoc.setPitch(pitch);
+
+                entity.teleport(newLoc);
+                entity.setVelocity(oldVelocity);
+            }
+        }
+    }
+
 
     //
     // Containers for the different types of signs
