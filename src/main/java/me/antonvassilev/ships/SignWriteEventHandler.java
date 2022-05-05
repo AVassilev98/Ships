@@ -1,16 +1,18 @@
 package me.antonvassilev.ships;
 
-import java.util.*;
-import java.util.stream.Collectors;
-
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.SignChangeEvent;
-import org.bukkit.event.EventHandler;
 import org.bukkit.plugin.Plugin;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 
 public class SignWriteEventHandler implements Listener {
@@ -28,6 +30,7 @@ public class SignWriteEventHandler implements Listener {
     /**
      * Handles placement of signs. If the sign is intended for Ships, dispatch to
      * event handler based on sign content.
+     *
      * @param event SignChangeEvent
      */
     @EventHandler
@@ -93,8 +96,7 @@ public class SignWriteEventHandler implements Listener {
                     shipSignTypeFromString(((TextComponent) component).content());
             // Grab the remaining components and pass them down to the handlers.
             List<Component> components = signComponents.stream().skip(1).collect(Collectors.toList());
-            switch (type)
-            {
+            switch (type) {
                 case LICENSE:
                     owningPlugin.getLogger().info("New License Sign");
                     handleLicenseSign(eventBlock, components);

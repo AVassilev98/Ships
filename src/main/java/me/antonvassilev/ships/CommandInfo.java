@@ -9,10 +9,10 @@ import org.jetbrains.annotations.NotNull;
 public class CommandInfo implements CommandExecutor {
     final private Plugin m_plugin;
 
-    CommandInfo(Plugin plugin)
-    {
+    CommandInfo(Plugin plugin) {
         m_plugin = plugin;
     }
+
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
 

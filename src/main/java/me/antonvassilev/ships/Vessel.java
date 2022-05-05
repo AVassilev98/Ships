@@ -1,8 +1,6 @@
 package me.antonvassilev.ships;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.world.level.block.TorchBlock;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
 import org.bukkit.*;
 import org.bukkit.block.Block;
@@ -20,24 +18,20 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.util.Vector;
 
 import java.lang.reflect.Field;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static java.lang.Math.*;
+import static java.lang.Math.max;
+import static java.lang.Math.min;
 
 
 public class Vessel {
-    final private static int MAX_VESSEL_SZ = 5000;
-    // size of workList -> max number of blocks to check for largest case (single column of blocks)
-    final private static int MAX_SEARCH_SPACE = (MAX_VESSEL_SZ * 4) + 2;
-
     // Metadata key constants
     public static final String VESSEL_NAME_METADATA_KEY = "VESSEL_NAME";
     public static final String VESSEL_CONTROL_TYPE_METADATA_KEY = "VESSEL_CONTROL_TYPE";
-
+    final private static int MAX_VESSEL_SZ = 5000;
+    // size of workList -> max number of blocks to check for largest case (single column of blocks)
+    final private static int MAX_SEARCH_SPACE = (MAX_VESSEL_SZ * 4) + 2;
     private final Plugin owningPlugin;
     private final World world;
     private final String name;
@@ -73,10 +67,11 @@ public class Vessel {
 
     /**
      * Sets the metadata on an engine sign block and adds it to the vessel.
+     *
      * @param block Block
      */
     public void addEngineSign(Block block) {
-        if(this.engineSign != null) {
+        if (this.engineSign != null) {
             owningPlugin.getLogger().info("Engine already registered for ship.");
             return;
         }
@@ -89,8 +84,7 @@ public class Vessel {
         this.m_blocks.add(new BlockInfo(this.engineSign));
     }
 
-    public void moveEngineMetadata(int x, int y, int z)
-    {
+    public void moveEngineMetadata(int x, int y, int z) {
         this.engineSign.getBlock().removeMetadata(
                 VESSEL_CONTROL_TYPE_METADATA_KEY, owningPlugin
         );
@@ -109,11 +103,9 @@ public class Vessel {
                 new FixedMetadataValue(owningPlugin, name));
     }
 
-    public void rotateEngineMetadata(Rotation rotation)
-    {
+    public void rotateEngineMetadata(Rotation rotation) {
         int sinFactor = 0;
-        switch (rotation)
-        {
+        switch (rotation) {
             case LEFT:
                 sinFactor = 1;
                 break;
@@ -142,8 +134,7 @@ public class Vessel {
                 new FixedMetadataValue(owningPlugin, name));
     }
 
-    public void moveSteeringMetadata(int x, int y, int z)
-    {
+    public void moveSteeringMetadata(int x, int y, int z) {
         this.steeringSign.getBlock().removeMetadata(
                 VESSEL_CONTROL_TYPE_METADATA_KEY, owningPlugin
         );
@@ -162,11 +153,9 @@ public class Vessel {
                 new FixedMetadataValue(owningPlugin, name));
     }
 
-    public void rotateSteeringMetadata(Rotation rotation)
-    {
+    public void rotateSteeringMetadata(Rotation rotation) {
         int sinFactor = 0;
-        switch (rotation)
-        {
+        switch (rotation) {
             case LEFT:
                 sinFactor = 1;
                 break;
@@ -202,9 +191,8 @@ public class Vessel {
             positionField = CraftBlockState.class.getDeclaredField("position");
             positionField.setAccessible(true);
             BlockPos newPosition = new BlockPos(x, y, z);
-            positionField.set((CraftBlockState)block, newPosition);
-        }
-        catch (Exception e) {
+            positionField.set(block, newPosition);
+        } catch (Exception e) {
             Bukkit.getLogger().severe(e.toString());
             return;
         }
@@ -227,15 +215,13 @@ public class Vessel {
 
         // Start block is always License sign and should be added to m_blocks when created
 
-        while (!workList.isEmpty())
-        {
+        while (!workList.isEmpty()) {
             BlockState curBlockState = workList.remove();
             Block curBlock = curBlockState.getBlock();
             if (curBlock.isLiquid() ||
-                curBlock.isEmpty() ||
-                visitedBlocks.contains(curBlock)
-            )
-            {
+                    curBlock.isEmpty() ||
+                    visitedBlocks.contains(curBlock)
+            ) {
                 continue;
             }
 
@@ -244,8 +230,7 @@ public class Vessel {
                     new FixedMetadataValue(owningPlugin, name));
 
             m_blocks.add(new BlockInfo((CraftBlockState) curBlockState));
-            if (m_blocks.size() >= MAX_VESSEL_SZ)
-            {
+            if (m_blocks.size() >= MAX_VESSEL_SZ) {
                 return;
             }
 
@@ -264,13 +249,11 @@ public class Vessel {
     //
     // Movement
     //
-    public void incrementVelocity()
-    {
+    public void incrementVelocity() {
         engineSign.incrementVelocity();
     }
 
-    public void decrementVelocity()
-    {
+    public void decrementVelocity() {
         engineSign.decrementVelocity();
     }
 
@@ -311,11 +294,6 @@ public class Vessel {
 
     public void moveDown() {
         m_blocks.sort(Comparator.comparing(BlockInfo::getPriority));
-    }
-
-    private enum Rotation {
-        LEFT,
-        RIGHT
     }
 
     public BlockFace getRightFace(BlockFace blockFace) {
@@ -369,19 +347,16 @@ public class Vessel {
 
     public void rotateBlockTexture(BlockState state, Rotation rotation) {
         BlockData data = state.getBlockData();
-        if(data instanceof Rotatable)
-        {
+        if (data instanceof Rotatable) {
             owningPlugin.getLogger().info("Found rotatable!");
             Rotatable rotatableData = (Rotatable) data;
             BlockFace orientation = rotatableData.getRotation();
             if (orientation == BlockFace.DOWN ||
-                orientation == BlockFace.UP ||
-                orientation == BlockFace.SELF)
-            {
+                    orientation == BlockFace.UP ||
+                    orientation == BlockFace.SELF) {
                 return;
             }
-            switch (rotation)
-            {
+            switch (rotation) {
                 case RIGHT:
                     rotatableData.setRotation(getRightFace(orientation));
                     break;
@@ -389,34 +364,27 @@ public class Vessel {
                     rotatableData.setRotation(getLeftFace(orientation));
                     break;
             }
-        }
-        else if (data instanceof Orientable)
-        {
+        } else if (data instanceof Orientable) {
             owningPlugin.getLogger().info("Found orientable!");
 
             Orientable orientableData = (Orientable) data;
             Axis currentAxis = orientableData.getAxis();
             if (currentAxis == Axis.X) {
                 orientableData.setAxis(Axis.Z);
-            }
-            else if (currentAxis == Axis.Z) {
+            } else if (currentAxis == Axis.Z) {
                 orientableData.setAxis(Axis.X);
             }
-        }
-        else if ( data instanceof Directional)
-        {
+        } else if (data instanceof Directional) {
             owningPlugin.getLogger().info("Found directional!");
 
             Directional rotatableData = (Directional) data;
             BlockFace orientation = rotatableData.getFacing();
             if (orientation == BlockFace.DOWN ||
                     orientation == BlockFace.UP ||
-                    orientation == BlockFace.SELF)
-            {
+                    orientation == BlockFace.SELF) {
                 return;
             }
-            switch (rotation)
-            {
+            switch (rotation) {
                 case RIGHT:
                     rotatableData.setFacing(getRightFace(orientation));
                     break;
@@ -431,8 +399,7 @@ public class Vessel {
     public void rotateVessel(Rotation rotation) {
         m_blocks.sort(Comparator.comparing(BlockInfo::getPriority));
         int sinFactor = 0;
-        switch (rotation)
-        {
+        switch (rotation) {
             case LEFT:
                 sinFactor = 1;
                 break;
@@ -445,13 +412,11 @@ public class Vessel {
         rotateSteeringMetadata(rotation);
         rotateEntities(rotation);
 
-        for(BlockInfo block : m_blocks)
-        {
+        for (BlockInfo block : m_blocks) {
             block.getState().getLocation().getBlock().setType(Material.AIR);
         }
 
-        for (BlockInfo block : m_blocks)
-        {
+        for (BlockInfo block : m_blocks) {
             int oldX = block.getX() - xBlockOffset;
             int oldZ = block.getZ() - zBlockOffset;
 
@@ -488,8 +453,7 @@ public class Vessel {
         }
 
         ListIterator<BlockInfo> ri = m_blocks.listIterator(m_blocks.size());
-        while (ri.hasPrevious())
-        {
+        while (ri.hasPrevious()) {
             CraftBlockState block = ri.previous().getState();
             setStatePosition(block, block.getX() + x, block.getY() + y, block.getZ() + z);
             block.update(true);
@@ -498,16 +462,13 @@ public class Vessel {
 
     private void moveEntities(int x, int y, int z) {
         Set<Chunk> vesselChunks = new HashSet<>();
-        for (BlockInfo block : m_blocks)
-        {
+        for (BlockInfo block : m_blocks) {
             Chunk chunk = block.getState().getLocation().getChunk();
             vesselChunks.add(chunk);
         }
-        for (Chunk chunk : vesselChunks)
-        {
+        for (Chunk chunk : vesselChunks) {
             Entity[] chunkEntities = chunk.getEntities();
-            for (Entity entity : chunkEntities)
-            {
+            for (Entity entity : chunkEntities) {
                 Location oldLoc = entity.getLocation();
                 Location newLoc = oldLoc.add(x, y, z);
                 entity.teleport(newLoc);
@@ -518,8 +479,7 @@ public class Vessel {
     private void rotateEntities(Rotation rotation) {
         float yawDelta = 0.0f;
         int sinFactor = 0;
-        switch (rotation)
-        {
+        switch (rotation) {
             case LEFT:
                 sinFactor = 1;
                 yawDelta = 90.0f;
@@ -531,16 +491,13 @@ public class Vessel {
         }
 
         Set<Chunk> vesselChunks = new HashSet<>();
-        for (BlockInfo block : m_blocks)
-        {
+        for (BlockInfo block : m_blocks) {
             Chunk chunk = block.getState().getLocation().getChunk();
             vesselChunks.add(chunk);
         }
-        for (Chunk chunk : vesselChunks)
-        {
+        for (Chunk chunk : vesselChunks) {
             Entity[] chunkEntities = chunk.getEntities();
-            for (Entity entity : chunkEntities)
-            {
+            for (Entity entity : chunkEntities) {
                 Location oldLoc = entity.getLocation();
                 int oldX = oldLoc.getBlockX() - xBlockOffset;
                 int oldZ = oldLoc.getBlockZ() - zBlockOffset;
@@ -562,12 +519,83 @@ public class Vessel {
         }
     }
 
+    private enum Rotation {
+        LEFT,
+        RIGHT
+    }
+
+
+    /**
+     * Enum class that supports string initialization, and allows fetching enum
+     * by string value.
+     */
+    enum ShipSignType {
+        LICENSE("[name]", "LICENSE"),
+        STEERING("[steer]", "STEERING"),
+        ENGINE("[move]", "ENGINE"),
+        UNKNOWN("unknown", "UNKNOWN");
+
+        private static final Map<String, ShipSignType> strToShipSignTypeMap =
+                Arrays.stream(ShipSignType.values()).collect(Collectors.toMap(
+                        ShipSignType::getValue,
+                        ShipSignType::getShipSignType
+                ));
+
+        private static final Map<String, ShipSignType> metadataValueToSignTypeMap =
+                Arrays.stream(ShipSignType.values()).collect(Collectors.toMap(
+                        ShipSignType::getMetadataValue,
+                        ShipSignType::getShipSignType
+                ));
+
+        private static final Map<ShipSignType, String> shipSignTypeToStringMap =
+                Arrays.stream(ShipSignType.values()).collect(Collectors.toMap(
+                        ShipSignType::getShipSignType,
+                        ShipSignType::getValue
+                ));
+
+        private final ShipSignType shipSignType;
+        private final String value;
+        private final String metadataValue;
+
+        ShipSignType(String str, String metadataValue) {
+            this.shipSignType = this;
+            this.value = str;
+            this.metadataValue = metadataValue;
+        }
+
+        public static ShipSignType shipSignTypeFromString(String str) {
+            ShipSignType type = strToShipSignTypeMap.get(str);
+            if (type != null) return type;
+            return UNKNOWN;
+        }
+
+        public static Optional<String> strToShipSignType(ShipSignType signType) {
+            return Optional.ofNullable(shipSignTypeToStringMap.get(signType));
+        }
+
+        public static Optional<ShipSignType> metadataStringToShipSignType(String metadataValue) {
+            return Optional.ofNullable(metadataValueToSignTypeMap.get(metadataValue));
+        }
+
+        public ShipSignType getShipSignType() {
+            return shipSignType;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        public String getMetadataValue() {
+            return metadataValue;
+        }
+    }
 
     //
     // Containers for the different types of signs
     //
     static class ShipSign extends CraftSign {
         final static int NUM_LINES = 4;
+
         public ShipSign(CraftSign sign) {
             super(sign.getWorld(), new SignBlockEntity(sign.getPosition(), sign.getHandle()));
         }
@@ -579,9 +607,10 @@ public class Vessel {
     }
 
     static class EngineSign extends ShipSign {
-        int velocity;
-        private static final int MAX_VELOCITY = 10;
         public static final String METADATA_VALUE = "ENGINE";
+        private static final int MAX_VELOCITY = 10;
+        int velocity;
+
         public EngineSign(CraftSign sign) {
             super(sign);
             setLine(0, "[Ship]");
@@ -622,6 +651,7 @@ public class Vessel {
 
     static class SteeringSign extends ShipSign {
         public static final String METADATA_VALUE = "STEERING";
+
         public SteeringSign(CraftSign sign) {
             super(sign);
             setLine(0, "[Ship]");
@@ -634,6 +664,7 @@ public class Vessel {
     private static class BlockInfo {
         private final CraftBlockState state;
         private final int priority;
+
         public BlockInfo(CraftBlockState state) {
             this.state = state;
             BlockData blockData = state.getBlockData();
@@ -652,73 +683,29 @@ public class Vessel {
             ) {
                 Bukkit.getLogger().info("Found Attachable");
                 this.priority = 0;
-            }
-            else {
+            } else {
                 this.priority = 1;
             }
         }
 
-        public CraftBlockState getState() { return this.state; }
-        public int getPriority() { return this.priority; }
-        public int getX() { return this.state.getX(); }
-        public int getY() { return this.state.getY(); }
-        public int getZ() { return this.state.getZ(); }
-    };
-
-    /**
-     * Enum class that supports string initialization, and allows fetching enum
-     * by string value.
-     */
-    enum ShipSignType {
-        LICENSE("[name]", "LICENSE"),
-        STEERING("[steer]", "STEERING"),
-        ENGINE("[move]", "ENGINE"),
-        UNKNOWN("unknown", "UNKNOWN");
-
-        private static final Map<String, ShipSignType> strToShipSignTypeMap =
-                Arrays.stream(ShipSignType.values()).collect(Collectors.toMap(
-                        ShipSignType::getValue,
-                        ShipSignType::getShipSignType
-                ));
-
-        private static final Map<String, ShipSignType> metadataValueToSignTypeMap =
-                Arrays.stream(ShipSignType.values()).collect(Collectors.toMap(
-                        ShipSignType::getMetadataValue,
-                        ShipSignType::getShipSignType
-                ));
-
-        private static final Map<ShipSignType, String> shipSignTypeToStringMap =
-                Arrays.stream(ShipSignType.values()).collect(Collectors.toMap(
-                        ShipSignType::getShipSignType,
-                        ShipSignType::getValue
-                ));
-
-        private final ShipSignType shipSignType;
-        private final String value;
-        private final String metadataValue;
-
-        ShipSignType(String str, String metadataValue) {
-            this.shipSignType = this;
-            this.value = str;
-            this.metadataValue = metadataValue;
+        public CraftBlockState getState() {
+            return this.state;
         }
 
-        public ShipSignType getShipSignType() { return shipSignType; }
-        public String getValue() { return value; }
-        public String getMetadataValue() { return metadataValue; }
-
-        public static ShipSignType shipSignTypeFromString(String str) {
-            ShipSignType type = strToShipSignTypeMap.get(str);
-            if (type != null) return type;
-            return UNKNOWN;
+        public int getPriority() {
+            return this.priority;
         }
 
-        public static Optional<String> strToShipSignType(ShipSignType signType) {
-            return Optional.ofNullable(shipSignTypeToStringMap.get(signType));
+        public int getX() {
+            return this.state.getX();
         }
 
-        public static Optional<ShipSignType> metadataStringToShipSignType(String metadataValue) {
-            return Optional.ofNullable(metadataValueToSignTypeMap.get(metadataValue));
+        public int getY() {
+            return this.state.getY();
+        }
+
+        public int getZ() {
+            return this.state.getZ();
         }
     }
 }

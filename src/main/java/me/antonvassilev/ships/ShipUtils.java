@@ -12,8 +12,9 @@ public class ShipUtils {
     /**
      * Extracts a String metadata value from a (block, plugin) tuple. Assumes that the value object
      * is of String type.
-     * @param key String metadata key
-     * @param block Block block
+     *
+     * @param key          String metadata key
+     * @param block        Block block
      * @param owningPlugin Plugin the plugin that we are fetching metadata for
      * @return Optional containing the value, if found.
      */
